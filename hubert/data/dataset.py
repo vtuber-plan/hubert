@@ -1,3 +1,4 @@
+import os
 import random
 from pathlib import Path
 import numpy as np
@@ -16,36 +17,41 @@ class AcousticUnitsDataset(Dataset):
         sample_rate: int = 16000,
         label_rate: int = 50,
         min_samples: int = 32000,
-        max_samples: int = 250000,
-        train: bool = True,
+        max_samples: int = 250000
     ):
-        self.wavs_dir = root / "wavs"
-        self.units_dir = root / "units"
+        self.filepaths = []
+        self.lengths = []
+        with open(root, "r", encoding="utf-8") as f:
+            self.root_path = f.readline().rstrip()
+            for line in f:
+                if len(line.strip()) == 0:
+                    continue
+                p, l = line.rstrip().split()
+                self.filepaths.append(p)
+                self.lengths.append(int(l))
 
-        with open(root / "lengths.json") as file:
-            self.lenghts = json.load(file)
+        new_filepaths = []
+        new_lengths = []
+        for i, p in enumerate(self.filepaths):
+            abs_path = os.path.join(self.root_path, p).replace("\\", "/")
+            if self.lengths[i] < min_samples or self.lengths[i] > max_samples:
+                continue
+            new_filepaths.append(p)
+            new_lengths.append(self.lengths[i])
 
-        pattern = "train-*/**/*.flac" if train else "dev-*/**/*.flac"
-        metadata = (
-            (path, path.relative_to(self.wavs_dir).with_suffix("").as_posix())
-            for path in self.wavs_dir.rglob(pattern)
-        )
-        metadata = ((path, key) for path, key in metadata if key in self.lenghts)
-        self.metadata = [
-            path for path, key in metadata if self.lenghts[key] > min_samples
-        ]
+        self.filepaths = new_filepaths
+        self.lengths = new_lengths
 
         self.sample_rate = sample_rate
         self.label_rate = label_rate
         self.min_samples = min_samples
         self.max_samples = max_samples
-        self.train = train
 
     def __len__(self):
-        return len(self.metadata)
+        return len(self.filepaths)
 
     def __getitem__(self, index):
-        wav_path = self.metadata[index]
+        wav_path = self.filepaths[index]
         units_path = self.units_dir / wav_path.relative_to(self.wavs_dir)
 
         wav, _ = torchaudio.load(wav_path)
