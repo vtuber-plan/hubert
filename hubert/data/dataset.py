@@ -13,15 +13,19 @@ import torchaudio
 class AcousticUnitsDataset(Dataset):
     def __init__(
         self,
-        root: Path,
+        data_path: Path,
+        label_path: Path,
         sample_rate: int = 16000,
         label_rate: int = 50,
         min_samples: int = 32000,
         max_samples: int = 250000
     ):
+        self.data_path = data_path
+        self.label_path = label_path
+        
         self.filepaths = []
         self.lengths = []
-        with open(root, "r", encoding="utf-8") as f:
+        with open(data_path, "r", encoding="utf-8") as f:
             self.root_path = f.readline().rstrip()
             for line in f:
                 if len(line.strip()) == 0:
